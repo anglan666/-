@@ -1,0 +1,160 @@
+/*********************************************************************************************************************
+* 导航与决策系统使用示例
+* 
+* 本文件展示如何在 main_cm7_0.c 中集成导航系统
+********************************************************************************************************************/
+
+//==================================================== 在 main.c 中使用 ====================================================
+
+#include "zf_common_headfile.h"
+#include "../code/gps_module/gps_service.h"
+#include "../code/camera_module/camera_service.h"
+#include "../code/decision_module/nav_decision.h"
+
+// 导航输入数据
+nav_input_struct nav_input;
+
+int main(void)
+{
+    clock_init(SYSTEM_CLOCK_250M);
+    debug_init();
+    
+    // 初始化各模块
+    gps_service_init();
+    // camera_service_init();       // 摄像头初始化 (如果启用)
+    nav_decision_init();            // 导航系统初始化
+    
+    // 设置导航模式
+    nav_set_mode(NAV_MODE_MIXED);   // 混合模式：优先摄像头，丢线切GPS
+    
+    // ==================== 示例1：手动添加路点 ====================
+    // 添加矩形路径 (单位：米)
+    nav_add_waypoint(0.0f,  0.0f,  WAYPOINT_START,  2.0f);
+    nav_add_waypoint(10.0f, 0.0f,  WAYPOINT_NORMAL, 3.0f);
+    nav_add_waypoint(10.0f, 10.0f, WAYPOINT_NORMAL, 3.0f);
+    nav_add_waypoint(0.0f,  10.0f, WAYPOINT_NORMAL, 3.0f);
+    nav_add_waypoint(0.0f,  0.0f,  WAYPOINT_FINISH, 2.0f);
+    nav_set_loop(0);                // 不循环
+    
+    // ==================== 示例2：实时录制路点 ====================
+    // 按KEY1录制当前位置为路点
+    if(gpio_get_level(KEY1) == 0)
+    {
+        if(gps_is_fixed() && gps_data.origin_set)
+        {
+            nav_add_waypoint_current(WAYPOINT_NORMAL, 2.5f);
+            printf("路点已添加: X=%.2f Y=%.2f\r\n", gps_data.pos_x, gps_data.pos_y);
+        }
+    }
+    
+    // ==================== 示例3：开始导航 ====================
+    nav_start();
+    
+    while(1)
+    {
+        // 更新GPS数据
+        gps_service_update();
+        
+        // 更新摄像头数据
+        // camera_service_update();
+        
+        // ==================== 填充导航输入 ====================
+        // GPS数据
+        nav_input.pos_x = gps_data.pos_x;
+        nav_input.pos_y = gps_data.pos_y;
+        nav_input.gps_heading = gps_data.course;
+        nav_input.gps_valid = gps_is_fixed();
+        nav_input.gps_reliable = gps_is_reliable();
+        nav_input.gps_origin_ready = gps_data.origin_set;
+        nav_input.gps_hdop = gps_data.hdop;
+
+        // 摄像头数据 (从camera_service获取)
+        // nav_input.camera_center_offset = track_info.offset;
+        // nav_input.camera_curvature = (float)track_info.center_slope / 100.0f;
+        // nav_input.camera_valid = track_info.is_valid;
+        // nav_input.camera_valid_rows = track_info.valid_row_count;
+        // nav_input.camera_center_slope = track_info.center_slope;
+        // nav_input.camera_road_type = track_info.road_type;
+
+        // 临时：摄像头数据设为无效，测试纯GPS导航
+        nav_input.camera_center_offset = 0;
+        nav_input.camera_curvature = 0;
+        nav_input.camera_valid = 0;         // 模拟丢线
+        nav_input.camera_valid_rows = 0;
+        nav_input.camera_center_slope = 0;
+        nav_input.camera_road_type = ROAD_LOST;
+
+        // 车辆状态
+        nav_input.current_speed = gps_data.speed / 3.6f;    // km/h -> m/s
+        
+        // ==================== 更新导航系统 ====================
+        nav_update(&nav_input);
+        
+        // ==================== 使用导航输出 ====================
+        // 输出转向角和目标速度
+        float steer = nav_output.steer_angle;       // 目标转向角 (度)
+        float speed = nav_output.target_speed;      // 目标速度 (m/s)
+        
+        // 发送给电机/舵机控制
+        // servo_set_angle(steer);
+        // motor_set_speed(speed);
+        
+        // ==================== 调试输出 ====================
+        printf("Mode:%s Steer:%.1f Spd:%.1f Dist:%.1f WP:%d/%d Cam:%d Gps:%d Reason:%d\r\n",
+               nav_output.active_source == NAV_SOURCE_CAMERA ? "CAM" : "GPS",
+               nav_output.steer_angle,
+               nav_output.target_speed,
+               nav_output.distance_to_target,
+               nav_path.current_index,
+               nav_path.count,
+               nav_output.camera_usable,
+               nav_output.gps_usable,
+               nav_output.switch_reason);
+        
+        // 检查导航状态
+        if(nav_ctrl.state == NAV_STATE_REACHED)
+        {
+            printf("*** 到达终点! ***\r\n");
+            nav_stop();
+        }
+        
+        system_delay_ms(50);        // 20Hz 更新频率
+    }
+}
+
+
+//==================================================== API 快速参考 ====================================================
+
+/*
+路点管理:
+    nav_add_waypoint(x, y, type, speed)     添加路点 (手动坐标)
+    nav_add_waypoint_current(type, speed)   添加当前GPS位置为路点
+    nav_clear_waypoints()                   清空所有路点
+    nav_set_loop(1/0)                       设置是否循环
+
+导航控制:
+    nav_decision_init()                     初始化
+    nav_set_mode(mode)                      设置模式 (CAMERA/GPS/MIXED)
+    nav_start()                             开始导航
+    nav_stop()                              停止导航
+    nav_pause() / nav_resume()              暂停/恢复
+
+核心更新:
+    nav_update(&nav_input)                  主更新函数 (每帧调用)
+
+读取输出:
+    nav_output.steer_angle                  转向角 (度, 正=右转)
+    nav_output.target_speed                 目标速度 (m/s)
+    nav_output.active_source                当前数据源 (CAMERA/GPS)
+    nav_output.distance_to_target           到目标点距离 (米)
+    nav_output.heading_error                航向偏差 (度)
+
+路点类型:
+    WAYPOINT_NORMAL     普通路点
+    WAYPOINT_STOP       停车点
+    WAYPOINT_SLOW       减速点
+    WAYPOINT_TURN_L     左转点
+    WAYPOINT_TURN_R     右转点
+    WAYPOINT_START      起点
+    WAYPOINT_FINISH     终点
+*/
