@@ -1,0 +1,18 @@
+# Local Claude artifacts
+.claude/
+.safety_snapshots/
+SKILLS.md
+WORK_LOG.md
+tools/
+
+# Local reference docs
+【必看】CYT4BBx主板硬件说明 V1.0.pdf
+逐飞助手说明书 V1.4.pdf
+逐飞双频GPS模块说明书.pdf
+
+# IAR local build/debug artifacts
+CYT4BB7_Library-master/Seekfree_CYT4BB_Opensource_Library/project/iar/Debug_m7_0/
+CYT4BB7_Library-master/Seekfree_CYT4BB_Opensource_Library/project/iar/Debug_m7_1/
+CYT4BB7_Library-master/Seekfree_CYT4BB_Opensource_Library/project/iar/project_config/settings/*.dbgdt
+CYT4BB7_Library-master/Seekfree_CYT4BB_Opensource_Library/project/iar/project_config/settings/*.dnx
+CYT4BB7_Library-master/Seekfree_CYT4BB_Opensource_Library/project/iar/settings/*.wsdt
