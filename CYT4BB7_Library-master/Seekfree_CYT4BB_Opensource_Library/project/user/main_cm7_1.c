@@ -14,7 +14,7 @@
 #include "../code/steer_control.h"
 #include "../code/navigation_bridge.h"
 
-#define CHASSIS_LOG_INTERVAL_MS    (1000u)
+#define CHASSIS_LOG_INTERVAL_MS    (200u)
 
 int imu_t = 0;
 volatile uint8 g_chassis_ipc_new_data = 0;
@@ -120,13 +120,14 @@ int main(void)
         if(now - last_log_ms >= CHASSIS_LOG_INTERVAL_MS)
         {
             last_log_ms = now;
-            printf("[CM7_1] pitch:%.2f yaw:%.2f roll:%.2f car:%.2f tar:%.2f turn:%.2f tf:%d jf:%d bf:%d\\r\\n",
-                   eulerAngle.pitch,
-                   eulerAngle.yaw,
-                   eulerAngle.roll,
+            printf("[CM7_1] car:%.2f tar:%.2f yaw:%.2f turn:%.2f | ipc_spd:%d ipc_turn:%d flags:0x%02X tf:%d jf:%d bf:%d\r\n",
                    car_speed,
                    tar_speed,
+                   eulerAngle.yaw,
                    turn_angle,
+                   g_chassis_cmd_speed,
+                   g_chassis_cmd_turn_delta,
+                   g_chassis_cmd_flags,
                    turn_flag,
                    jump_flag,
                    bridge_flag);
