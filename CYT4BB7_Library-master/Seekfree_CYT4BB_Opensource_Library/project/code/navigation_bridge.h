@@ -29,9 +29,17 @@
 #define CHASSIS_IPC_FLAG_JUMP_EN      (1u << 1)
 #define CHASSIS_IPC_FLAG_BRIDGE_EN    (1u << 2)
 
+typedef struct
+{
+    int16 speed_cmd;
+    int16 turn_cmd;
+    uint8 flags;
+} nav_bridge_debug_struct;
+
 void nav_bridge_init(void);
 void nav_bridge_update(uint32 now_ms);
 void nav_bridge_notify_camera_frame(uint32 now_ms);
 void nav_bridge_notify_gps_update(uint32 now_ms);
+const nav_bridge_debug_struct* nav_bridge_get_debug(void);
 
 #endif /* NAVIGATION_BRIDGE_H_ */

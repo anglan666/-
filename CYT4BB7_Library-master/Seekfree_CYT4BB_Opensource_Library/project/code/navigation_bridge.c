@@ -15,6 +15,7 @@
 #include "IMU.h"
 
 static nav_input_struct s_nav_input;
+static nav_bridge_debug_struct s_nav_bridge_debug;
 static uint32 s_last_camera_frame_ms = 0;
 static uint32 s_last_gps_update_ms = 0;
 static uint8 s_gps_origin_auto_set = 0;
@@ -42,6 +43,9 @@ static void nav_bridge_send_targets(void)
     speed_cmd = (int16)speed_value;
     turn_cmd = (int16)(steer_delta * NAV_BRIDGE_STEER_PACKET_SCALE);
 
+    s_nav_bridge_debug.speed_cmd = speed_cmd;
+    s_nav_bridge_debug.turn_cmd = turn_cmd;
+
     if(nav_ctrl.state == NAV_STATE_RUNNING)
     {
         flags |= CHASSIS_IPC_FLAG_TURN_EN;
@@ -55,6 +59,8 @@ static void nav_bridge_send_targets(void)
     {
         flags |= CHASSIS_IPC_FLAG_JUMP_EN;
     }
+
+    s_nav_bridge_debug.flags = flags;
 
     ipc_send_data(nav_bridge_make_packet(CHASSIS_IPC_CMD_SPEED, speed_cmd));
     ipc_send_data(nav_bridge_make_packet(CHASSIS_IPC_CMD_TURN, turn_cmd));
@@ -81,6 +87,11 @@ void nav_bridge_notify_camera_frame(uint32 now_ms)
 void nav_bridge_notify_gps_update(uint32 now_ms)
 {
     s_last_gps_update_ms = now_ms;
+}
+
+const nav_bridge_debug_struct* nav_bridge_get_debug(void)
+{
+    return &s_nav_bridge_debug;
 }
 
 void nav_bridge_update(uint32 now_ms)

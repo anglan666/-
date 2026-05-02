@@ -178,15 +178,20 @@ int main(void)
 
         if(now - last_log_ms >= LOG_PRINT_INTERVAL_MS)
         {
+            const nav_bridge_debug_struct *bridge_debug = nav_bridge_get_debug();
+
             last_log_ms = now;
             gpio_toggle_level(LED1);
-            printf("[DEC] rv:%d road:%s task:%s src:%s steer:%.2f spd:%.2f\r\n",
+            printf("[DEC] rv:%d road:%s task:%s src:%s steer:%.2f spd:%.2f | ipc_spd:%d ipc_turn:%d flags:0x%02X\r\n",
                    track_info.is_valid,
                    road_type_name(track_info.road_type),
                    nav_task_name(nav_output.current_task),
                    nav_source_name(nav_output.active_source),
                    nav_output.steer_angle,
-                   nav_output.target_speed);
+                   nav_output.target_speed,
+                   bridge_debug->speed_cmd,
+                   bridge_debug->turn_cmd,
+                   bridge_debug->flags);
         }
     }
 }
