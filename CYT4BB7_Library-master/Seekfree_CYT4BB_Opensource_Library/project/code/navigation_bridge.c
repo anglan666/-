@@ -51,13 +51,17 @@ static void nav_bridge_send_targets(void)
         flags |= CHASSIS_IPC_FLAG_TURN_EN;
     }
 
-    if(nav_output.current_task == NAV_TASK_BRIDGE_PASS)
+    if(nav_output.bridge_execute)
     {
         flags |= CHASSIS_IPC_FLAG_BRIDGE_EN;
     }
-    else if(nav_output.current_task == NAV_TASK_STAIRS_PASS)
+    else if(nav_output.jump_execute)
     {
         flags |= CHASSIS_IPC_FLAG_JUMP_EN;
+    }
+    else if(nav_output.mine_rotate_execute)
+    {
+        flags |= CHASSIS_IPC_FLAG_MINE_ROT_EN;
     }
 
     s_nav_bridge_debug.flags = flags;
@@ -125,9 +129,15 @@ void nav_bridge_update(uint32 now_ms)
     s_nav_input.bridge_detected = camera_task_info.bridge_detected;
     s_nav_input.bridge_hold_frames = camera_task_info.bridge_hold_frames;
     s_nav_input.bridge_center_offset = camera_task_info.bridge_center_offset;
+    s_nav_input.bridge_distance_est = camera_task_info.bridge_distance_est;
+    s_nav_input.bridge_distance_level = camera_task_info.bridge_distance_level;
+    s_nav_input.bridge_alignment_ok = camera_task_info.bridge_alignment_ok;
     s_nav_input.stairs_detected = camera_task_info.stairs_detected;
     s_nav_input.stairs_hold_frames = camera_task_info.stairs_hold_frames;
     s_nav_input.stairs_center_offset = camera_task_info.stairs_center_offset;
+    s_nav_input.stairs_distance_est = camera_task_info.stairs_distance_est;
+    s_nav_input.stairs_distance_level = camera_task_info.stairs_distance_level;
+    s_nav_input.stairs_alignment_ok = camera_task_info.stairs_alignment_ok;
     s_nav_input.cone_gap_detected = camera_task_info.cone_gap_detected;
     s_nav_input.cone_gap_hold_frames = camera_task_info.cone_gap_hold_frames;
     s_nav_input.cone_gap_offset = camera_task_info.cone_gap_offset;

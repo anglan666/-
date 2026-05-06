@@ -116,9 +116,15 @@ typedef struct
     uint8   bridge_detected;                     // 是否检测到单边桥/窄通道
     uint8   bridge_hold_frames;                  // 单边桥保持计数
     int16   bridge_center_offset;                // 单边桥中心偏移
+    uint16  bridge_distance_est;                 // 单边桥相对距离估计（值越小表示越近）
+    uint8   bridge_distance_level;               // 单边桥接近等级（0远-3近）
+    uint8   bridge_alignment_ok;                 // 单边桥是否已基本对准
     uint8   stairs_detected;                     // 是否检测到台阶/坡道结构
     uint8   stairs_hold_frames;                  // 台阶保持计数
     int16   stairs_center_offset;                // 台阶中心偏移
+    uint16  stairs_distance_est;                 // 台阶相对距离估计（值越小表示越近）
+    uint8   stairs_distance_level;               // 台阶接近等级（0远-3近）
+    uint8   stairs_alignment_ok;                 // 台阶是否已基本对准
 } camera_task_info_struct;
 
 // 摄像头数据结构体 - 供决策层通过接口获取数据

@@ -182,13 +182,19 @@ int main(void)
 
             last_log_ms = now;
             gpio_toggle_level(LED1);
-            printf("[DEC] rv:%d road:%s task:%s src:%s steer:%.2f spd:%.2f | ipc_spd:%d ipc_turn:%d flags:0x%02X\r\n",
+            printf("[DEC] rv:%d road:%s task:%s src:%s steer:%.2f spd:%.2f | bridge:d%u/lv%u/a%d stairs:d%u/lv%u/a%d | ipc_spd:%d ipc_turn:%d flags:0x%02X\r\n",
                    track_info.is_valid,
                    road_type_name(track_info.road_type),
                    nav_task_name(nav_output.current_task),
                    nav_source_name(nav_output.active_source),
                    nav_output.steer_angle,
                    nav_output.target_speed,
+                   camera_task_info.bridge_distance_est,
+                   camera_task_info.bridge_distance_level,
+                   camera_task_info.bridge_alignment_ok,
+                   camera_task_info.stairs_distance_est,
+                   camera_task_info.stairs_distance_level,
+                   camera_task_info.stairs_alignment_ok,
                    bridge_debug->speed_cmd,
                    bridge_debug->turn_cmd,
                    bridge_debug->flags);

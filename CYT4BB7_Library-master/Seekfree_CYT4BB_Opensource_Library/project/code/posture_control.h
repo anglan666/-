@@ -13,6 +13,7 @@ extern int16 jump_flag;
 extern int16 run_flag;
 extern int16 jumped_flag, jump_pre_flag;
 extern int16 bridge_flag;
+extern int16 mine_rotate_flag;
 extern int16 bridge_slowdown_flag, bridge_step;
 extern  float steer_balance_angle ;
 extern int16 steer_location_offset[4];

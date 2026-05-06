@@ -165,9 +165,15 @@ typedef struct
     uint8 bridge_detected;           // 是否检测到交错单边桥结构
     uint8 bridge_hold_frames;        // 单边桥保持计数
     int16 bridge_center_offset;      // 单边桥可通行中心偏移
+    uint16 bridge_distance_est;      // 单边桥相对距离估计（值越小表示越近）
+    uint8 bridge_distance_level;     // 单边桥接近等级（0远-3近）
+    uint8 bridge_alignment_ok;       // 单边桥是否已基本对准
     uint8 stairs_detected;           // 是否检测到台阶/坡道结构
     uint8 stairs_hold_frames;        // 台阶保持计数
     int16 stairs_center_offset;      // 台阶中心偏移
+    uint16 stairs_distance_est;      // 台阶相对距离估计（值越小表示越近）
+    uint8 stairs_distance_level;     // 台阶接近等级（0远-3近）
+    uint8 stairs_alignment_ok;       // 台阶是否已基本对准
 
     // 摄像头数据
     int16 camera_center_offset;     // 摄像头中线偏移 (像素, 正=右偏)
@@ -200,6 +206,9 @@ typedef struct
     uint8 source_hold_frames;       // 当前数据源已保持的周期数
     uint8 task_hold_frames;         // 当前任务保持计数
     uint32 camera_age_ms;           // 当前视觉数据年龄（毫秒）
+    uint8 bridge_execute;           // 是否允许底层进入桥姿态执行
+    uint8 jump_execute;             // 是否允许底层执行起跳动作
+    uint8 mine_rotate_execute;      // 是否允许底层执行雷区旋转动作
 
     // 调试信息
     float heading_error;            // 航向偏差 (度)

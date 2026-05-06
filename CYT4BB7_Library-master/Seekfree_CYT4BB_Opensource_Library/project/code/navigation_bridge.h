@@ -28,6 +28,7 @@
 #define CHASSIS_IPC_FLAG_TURN_EN      (1u << 0)
 #define CHASSIS_IPC_FLAG_JUMP_EN      (1u << 1)
 #define CHASSIS_IPC_FLAG_BRIDGE_EN    (1u << 2)
+#define CHASSIS_IPC_FLAG_MINE_ROT_EN  (1u << 3)
 
 typedef struct
 {

@@ -14,6 +14,7 @@ int time=0;
 int16 run_flag          = 1;
 int16 jump_flag         = 2;
 int16 bridge_flag       = 0;
+int16 mine_rotate_flag  = 0;
 
 int16 jump_time_counter = 0;          //跳跃时间计数器
 float error_hight       = 0;          //舵机高度差
@@ -40,9 +41,14 @@ void dynamic_steer_control(void)
        tar_speed = default_tar_speed;
    }
    yaw_angle_k = default_yaw_angle_k;
-   
-   if(g_tof_distance_mm<=jump_distance&&g_tof_distance_mm>=(jump_distance-10)&&jump_flag==2) jump_flag=1;
-   //if(imu_t%4000==0) jump_flag=1;
+
+   if(mine_rotate_flag)
+   {
+       tar_speed = 0.0f;
+       yaw_angle_k = 0.0f;
+   }
+
+   /* 纯视觉起跳触发已接管，这里不再使用 TOF 自动触发 jump_flag */
    
 
     // Calculate steering output duty based on speed
@@ -93,7 +99,15 @@ void dynamic_steer_control(void)
     
     if (run_flag == 1)
     {
-       
+        if(mine_rotate_flag)
+        {
+            steer_control(&steer_1, func_limit_ab(20 - steer_location_offset[0], -40, 40));
+            steer_control(&steer_2, func_limit_ab(20 - steer_location_offset[1], -40, 40));
+            steer_control(&steer_3, func_limit_ab(-20 - steer_location_offset[2], -40, 40));
+            steer_control(&steer_4, func_limit_ab(-20 - steer_location_offset[3], -40, 40));
+            return;
+        }
+
          if(jump_flag == 1)
         {
           steer_balance_angle=func_limit_ab(Angle_cycle.Out/7,-300,300)*6;

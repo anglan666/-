@@ -53,6 +53,15 @@ static uint8 bridge_release_hold_limit = 2;
 static uint8 stairs_detect_hold_limit = 2;
 static uint8 stairs_release_hold_limit = 1;
 
+#define BRIDGE_ALIGN_OK_ABS_OFFSET      (12)
+#define STAIRS_ALIGN_OK_ABS_OFFSET      (10)
+#define BRIDGE_DISTANCE_NEAR_ROW        (95)
+#define BRIDGE_DISTANCE_MID_ROW         (80)
+#define BRIDGE_DISTANCE_FAR_ROW         (65)
+#define STAIRS_DISTANCE_NEAR_ROW        (98)
+#define STAIRS_DISTANCE_MID_ROW         (84)
+#define STAIRS_DISTANCE_FAR_ROW         (70)
+
 // 内部缓冲区
 static uint8 binary_image[CAMERA_IMAGE_H][CAMERA_IMAGE_W];  // 二值化图像缓冲区
 
@@ -824,6 +833,63 @@ road_type_enum camera_get_road_type(void)
     return track_info.road_type;
 }
 
+static uint8 camera_abs_i16(int16 value)
+{
+    return (uint8)((value < 0) ? (-value) : value);
+}
+
+static uint8 camera_find_bottom_valid_row(uint8 min_width, uint8 max_width)
+{
+    int16 row;
+
+    for(row = CAMERA_SCAN_START_ROW; row >= CAMERA_SCAN_END_ROW; row--)
+    {
+        uint8 left = track_info.left_edge[row];
+        uint8 right = track_info.right_edge[row];
+
+        if(left == CAMERA_EDGE_INVALID || right == CAMERA_EDGE_INVALID || right <= left)
+        {
+            if(row == CAMERA_SCAN_END_ROW)
+            {
+                break;
+            }
+            continue;
+        }
+
+        {
+            uint8 width = right - left;
+            if(width >= min_width && width <= max_width)
+            {
+                return (uint8)row;
+            }
+        }
+
+        if(row == CAMERA_SCAN_END_ROW)
+        {
+            break;
+        }
+    }
+
+    return CAMERA_SCAN_END_ROW;
+}
+
+static uint8 camera_distance_level_from_row(uint8 row, uint8 far_row, uint8 mid_row, uint8 near_row)
+{
+    if(row >= near_row)
+    {
+        return 3;
+    }
+    if(row >= mid_row)
+    {
+        return 2;
+    }
+    if(row >= far_row)
+    {
+        return 1;
+    }
+    return 0;
+}
+
 void camera_update_task_semantics(void)
 {
     memset(&camera_task_candidate, 0, sizeof(camera_task_info_struct));
@@ -832,9 +898,18 @@ void camera_update_task_semantics(void)
     {
         if(track_info.otsu_threshold < 95)
         {
+            uint8 stairs_row = camera_find_bottom_valid_row(120, 188);
+
             camera_task_candidate.blue_zone_detected = 1;
             camera_task_candidate.stairs_detected = 1;
             camera_task_candidate.stairs_center_offset = track_info.offset;
+            camera_task_candidate.stairs_distance_est = (uint16)(CAMERA_IMAGE_H - stairs_row);
+            camera_task_candidate.stairs_distance_level = camera_distance_level_from_row(
+                stairs_row,
+                STAIRS_DISTANCE_FAR_ROW,
+                STAIRS_DISTANCE_MID_ROW,
+                STAIRS_DISTANCE_NEAR_ROW);
+            camera_task_candidate.stairs_alignment_ok = (camera_abs_i16(track_info.offset) <= STAIRS_ALIGN_OK_ABS_OFFSET);
         }
     }
 
@@ -852,8 +927,17 @@ void camera_update_task_semantics(void)
        track_info.road_width_avg < 120 &&
        track_info.left_lost_cnt < 25 && track_info.right_lost_cnt < 25)
     {
+        uint8 bridge_row = camera_find_bottom_valid_row(40, 120);
+
         camera_task_candidate.bridge_detected = 1;
         camera_task_candidate.bridge_center_offset = track_info.offset;
+        camera_task_candidate.bridge_distance_est = (uint16)(CAMERA_IMAGE_H - bridge_row);
+        camera_task_candidate.bridge_distance_level = camera_distance_level_from_row(
+            bridge_row,
+            BRIDGE_DISTANCE_FAR_ROW,
+            BRIDGE_DISTANCE_MID_ROW,
+            BRIDGE_DISTANCE_NEAR_ROW);
+        camera_task_candidate.bridge_alignment_ok = (camera_abs_i16(track_info.offset) <= BRIDGE_ALIGN_OK_ABS_OFFSET);
     }
 
     if(track_info.is_valid && track_info.valid_row_count > 30 &&
@@ -908,6 +992,9 @@ void camera_update_task_semantics(void)
             bridge_hold_count++;
         }
         camera_task_info.bridge_center_offset = camera_task_candidate.bridge_center_offset;
+        camera_task_info.bridge_distance_est = camera_task_candidate.bridge_distance_est;
+        camera_task_info.bridge_distance_level = camera_task_candidate.bridge_distance_level;
+        camera_task_info.bridge_alignment_ok = camera_task_candidate.bridge_alignment_ok;
     }
     else if(bridge_hold_count > 0)
     {
@@ -921,6 +1008,9 @@ void camera_update_task_semantics(void)
             stairs_hold_count++;
         }
         camera_task_info.stairs_center_offset = camera_task_candidate.stairs_center_offset;
+        camera_task_info.stairs_distance_est = camera_task_candidate.stairs_distance_est;
+        camera_task_info.stairs_distance_level = camera_task_candidate.stairs_distance_level;
+        camera_task_info.stairs_alignment_ok = camera_task_candidate.stairs_alignment_ok;
     }
     else if(stairs_hold_count > 0)
     {
@@ -959,10 +1049,16 @@ void camera_update_task_semantics(void)
     if(!camera_task_info.bridge_detected)
     {
         camera_task_info.bridge_center_offset = 0;
+        camera_task_info.bridge_distance_est = 0;
+        camera_task_info.bridge_distance_level = 0;
+        camera_task_info.bridge_alignment_ok = 0;
     }
     if(!camera_task_info.stairs_detected)
     {
         camera_task_info.stairs_center_offset = 0;
+        camera_task_info.stairs_distance_est = 0;
+        camera_task_info.stairs_distance_level = 0;
+        camera_task_info.stairs_alignment_ok = 0;
     }
     if(!camera_task_info.cone_gap_detected)
     {

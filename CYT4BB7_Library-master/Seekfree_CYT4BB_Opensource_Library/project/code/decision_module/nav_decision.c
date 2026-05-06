@@ -438,6 +438,34 @@ void nav_update(nav_input_struct *input)
     }
 
     nav_output.target_speed = target_speed;
+    nav_output.bridge_execute = 0;
+    nav_output.jump_execute = 0;
+    nav_output.mine_rotate_execute = 0;
+
+    if(nav_ctrl.current_task == NAV_TASK_BRIDGE_PASS)
+    {
+        if(input->bridge_alignment_ok && input->bridge_distance_level >= 2)
+        {
+            nav_output.bridge_execute = 1;
+        }
+    }
+    else if(nav_ctrl.current_task == NAV_TASK_STAIRS_PASS)
+    {
+        if(input->stairs_alignment_ok && input->stairs_distance_level >= 3)
+        {
+            nav_output.jump_execute = 1;
+        }
+    }
+    else if(nav_ctrl.current_task == NAV_TASK_MINE_ROTATE)
+    {
+        if(input->mine_box_detected && input->blue_zone_detected)
+        {
+            nav_output.mine_rotate_execute = 1;
+            target_speed = 0.0f;
+            steer = 18.0f;
+        }
+    }
+
     nav_output.steer_angle = nav_clamp(nav_apply_steer_filter(steer),
                                        -NAV_MAX_STEER_ANGLE,
                                        NAV_MAX_STEER_ANGLE);

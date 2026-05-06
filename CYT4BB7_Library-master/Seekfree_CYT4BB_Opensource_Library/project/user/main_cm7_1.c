@@ -64,27 +64,19 @@ static void chassis_apply_ipc_targets(void)
     turn_angle = (float)eulerAngle.yaw + turn_delta;
     turn_flag = (g_chassis_cmd_flags & CHASSIS_IPC_FLAG_TURN_EN) ? 1 : 0;
 
-    if(g_chassis_cmd_flags & CHASSIS_IPC_FLAG_BRIDGE_EN)
+    bridge_flag = (g_chassis_cmd_flags & CHASSIS_IPC_FLAG_BRIDGE_EN) ? 1 : 0;
+    mine_rotate_flag = (g_chassis_cmd_flags & CHASSIS_IPC_FLAG_MINE_ROT_EN) ? 1 : 0;
+
+    if(g_chassis_cmd_flags & CHASSIS_IPC_FLAG_JUMP_EN)
     {
-        bridge_flag = 1;
         if(jump_flag != 1)
         {
-            jump_flag = 2;
+            jump_flag = 1;
         }
     }
-    else
-    {
-        bridge_flag = 0;
-    }
-
-    if((g_chassis_cmd_flags & CHASSIS_IPC_FLAG_JUMP_EN) == 0u && jump_flag == 0)
+    else if(jump_flag == 0)
     {
         jump_flag = 2;
-    }
-
-    if((g_chassis_cmd_flags & CHASSIS_IPC_FLAG_JUMP_EN) && jump_flag == 2)
-    {
-        jump_flag = 1;
     }
 
     g_chassis_ipc_new_data = 0;
@@ -120,7 +112,7 @@ int main(void)
         if(now - last_log_ms >= CHASSIS_LOG_INTERVAL_MS)
         {
             last_log_ms = now;
-            printf("[CM7_1] car:%.2f tar:%.2f yaw:%.2f turn:%.2f | ipc_spd:%d ipc_turn:%d flags:0x%02X tf:%d jf:%d bf:%d\r\n",
+            printf("[CM7_1] car:%.2f tar:%.2f yaw:%.2f turn:%.2f | ipc_spd:%d ipc_turn:%d flags:0x%02X tf:%d jf:%d bf:%d mf:%d\r\n",
                    car_speed,
                    tar_speed,
                    eulerAngle.yaw,
@@ -130,7 +122,8 @@ int main(void)
                    g_chassis_cmd_flags,
                    turn_flag,
                    jump_flag,
-                   bridge_flag);
+                   bridge_flag,
+                   mine_rotate_flag);
         }
     }
 }
