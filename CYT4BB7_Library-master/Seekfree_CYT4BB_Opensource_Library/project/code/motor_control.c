@@ -1,6 +1,7 @@
 
 #include "zf_common_headfile.h"
 
+#include "IMU.h"
 #include "small_driver_uart_control.h"
 #include "motor_control.h"
 #include "pid.h"

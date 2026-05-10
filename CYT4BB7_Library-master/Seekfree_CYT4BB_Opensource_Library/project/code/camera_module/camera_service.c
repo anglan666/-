@@ -36,6 +36,77 @@
 
 #include "camera_service.h"
 
+static float camera_abs_f(float value)
+{
+    return (value < 0.0f) ? (-value) : value;
+}
+
+static float camera_offset_to_angle_deg(int16 offset)
+{
+    return ((float)offset / (float)CAMERA_IMAGE_CENTER) * (CAMERA_HFOV_DEG * 0.5f);
+}
+
+static float camera_row_to_ground_distance_cm(uint8 row)
+{
+    float normalized_y;
+    float vertical_angle_deg;
+    float total_angle_deg;
+    float rad;
+    float tan_value;
+    const float pi = 3.14159265f;
+
+    normalized_y = ((float)(CAMERA_IMAGE_H - 1 - row) / (float)(CAMERA_IMAGE_H - 1)) - 0.5f;
+    vertical_angle_deg = normalized_y * CAMERA_VFOV_DEG;
+    total_angle_deg = CAMERA_PITCH_DEG + vertical_angle_deg;
+
+    if(total_angle_deg < 5.0f)
+    {
+        total_angle_deg = 5.0f;
+    }
+    else if(total_angle_deg > 85.0f)
+    {
+        total_angle_deg = 85.0f;
+    }
+
+    rad = total_angle_deg * pi / 180.0f;
+    tan_value = tanf(rad);
+    if(tan_value < 0.001f)
+    {
+        tan_value = 0.001f;
+    }
+
+    return CAMERA_MOUNT_HEIGHT_CM / tan_value;
+}
+
+static float camera_lerp(float x0, float y0, float x1, float y1, float x)
+{
+    if(camera_abs_f(x1 - x0) < 0.001f)
+    {
+        return y0;
+    }
+    return y0 + (y1 - y0) * ((x - x0) / (x1 - x0));
+}
+
+static float camera_calibrated_distance_cm(uint8 row,
+                                           uint8 near_row, float near_cm,
+                                           uint8 mid_row,  float mid_cm,
+                                           uint8 far_row,  float far_cm)
+{
+    if(row >= near_row)
+    {
+        return near_cm;
+    }
+    if(row >= mid_row)
+    {
+        return camera_lerp((float)mid_row, mid_cm, (float)near_row, near_cm, (float)row);
+    }
+    if(row >= far_row)
+    {
+        return camera_lerp((float)far_row, far_cm, (float)mid_row, mid_cm, (float)row);
+    }
+    return far_cm + (float)(far_row - row) * 0.5f;
+}
+
 //====================================================全局变量定义====================================================
 camera_data_struct  camera_data;                // 摄像头数据结构体
 track_info_struct   track_info;                 // 赛道信息结构体
@@ -903,7 +974,15 @@ void camera_update_task_semantics(void)
             camera_task_candidate.blue_zone_detected = 1;
             camera_task_candidate.stairs_detected = 1;
             camera_task_candidate.stairs_center_offset = track_info.offset;
+            camera_task_candidate.stairs_offset_angle_deg = camera_offset_to_angle_deg(track_info.offset);
+            camera_task_candidate.stairs_row_est = stairs_row;
             camera_task_candidate.stairs_distance_est = (uint16)(CAMERA_IMAGE_H - stairs_row);
+            camera_task_candidate.stairs_geom_distance_cm = camera_row_to_ground_distance_cm(stairs_row);
+            camera_task_candidate.stairs_forward_distance_cm = camera_calibrated_distance_cm(
+                stairs_row,
+                STAIRS_CAL_NEAR_ROW, STAIRS_CAL_NEAR_CM,
+                STAIRS_CAL_MID_ROW, STAIRS_CAL_MID_CM,
+                STAIRS_CAL_FAR_ROW, STAIRS_CAL_FAR_CM);
             camera_task_candidate.stairs_distance_level = camera_distance_level_from_row(
                 stairs_row,
                 STAIRS_DISTANCE_FAR_ROW,
@@ -931,7 +1010,15 @@ void camera_update_task_semantics(void)
 
         camera_task_candidate.bridge_detected = 1;
         camera_task_candidate.bridge_center_offset = track_info.offset;
+        camera_task_candidate.bridge_offset_angle_deg = camera_offset_to_angle_deg(track_info.offset);
+        camera_task_candidate.bridge_row_est = bridge_row;
         camera_task_candidate.bridge_distance_est = (uint16)(CAMERA_IMAGE_H - bridge_row);
+        camera_task_candidate.bridge_geom_distance_cm = camera_row_to_ground_distance_cm(bridge_row);
+        camera_task_candidate.bridge_forward_distance_cm = camera_calibrated_distance_cm(
+            bridge_row,
+            BRIDGE_CAL_NEAR_ROW, BRIDGE_CAL_NEAR_CM,
+            BRIDGE_CAL_MID_ROW, BRIDGE_CAL_MID_CM,
+            BRIDGE_CAL_FAR_ROW, BRIDGE_CAL_FAR_CM);
         camera_task_candidate.bridge_distance_level = camera_distance_level_from_row(
             bridge_row,
             BRIDGE_DISTANCE_FAR_ROW,
@@ -992,7 +1079,11 @@ void camera_update_task_semantics(void)
             bridge_hold_count++;
         }
         camera_task_info.bridge_center_offset = camera_task_candidate.bridge_center_offset;
+        camera_task_info.bridge_offset_angle_deg = camera_task_candidate.bridge_offset_angle_deg;
+        camera_task_info.bridge_row_est = camera_task_candidate.bridge_row_est;
         camera_task_info.bridge_distance_est = camera_task_candidate.bridge_distance_est;
+        camera_task_info.bridge_geom_distance_cm = camera_task_candidate.bridge_geom_distance_cm;
+        camera_task_info.bridge_forward_distance_cm = camera_task_candidate.bridge_forward_distance_cm;
         camera_task_info.bridge_distance_level = camera_task_candidate.bridge_distance_level;
         camera_task_info.bridge_alignment_ok = camera_task_candidate.bridge_alignment_ok;
     }
@@ -1008,7 +1099,11 @@ void camera_update_task_semantics(void)
             stairs_hold_count++;
         }
         camera_task_info.stairs_center_offset = camera_task_candidate.stairs_center_offset;
+        camera_task_info.stairs_offset_angle_deg = camera_task_candidate.stairs_offset_angle_deg;
+        camera_task_info.stairs_row_est = camera_task_candidate.stairs_row_est;
         camera_task_info.stairs_distance_est = camera_task_candidate.stairs_distance_est;
+        camera_task_info.stairs_geom_distance_cm = camera_task_candidate.stairs_geom_distance_cm;
+        camera_task_info.stairs_forward_distance_cm = camera_task_candidate.stairs_forward_distance_cm;
         camera_task_info.stairs_distance_level = camera_task_candidate.stairs_distance_level;
         camera_task_info.stairs_alignment_ok = camera_task_candidate.stairs_alignment_ok;
     }
@@ -1049,14 +1144,22 @@ void camera_update_task_semantics(void)
     if(!camera_task_info.bridge_detected)
     {
         camera_task_info.bridge_center_offset = 0;
+        camera_task_info.bridge_offset_angle_deg = 0.0f;
+        camera_task_info.bridge_row_est = 0;
         camera_task_info.bridge_distance_est = 0;
+        camera_task_info.bridge_geom_distance_cm = 0.0f;
+        camera_task_info.bridge_forward_distance_cm = 0.0f;
         camera_task_info.bridge_distance_level = 0;
         camera_task_info.bridge_alignment_ok = 0;
     }
     if(!camera_task_info.stairs_detected)
     {
         camera_task_info.stairs_center_offset = 0;
+        camera_task_info.stairs_offset_angle_deg = 0.0f;
+        camera_task_info.stairs_row_est = 0;
         camera_task_info.stairs_distance_est = 0;
+        camera_task_info.stairs_geom_distance_cm = 0.0f;
+        camera_task_info.stairs_forward_distance_cm = 0.0f;
         camera_task_info.stairs_distance_level = 0;
         camera_task_info.stairs_alignment_ok = 0;
     }

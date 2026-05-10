@@ -1,5 +1,6 @@
 #include "zf_common_headfile.h"
 
+#include "pid.h"
 #include "steer_control.h"
 
 steer_control_struct steer_1;

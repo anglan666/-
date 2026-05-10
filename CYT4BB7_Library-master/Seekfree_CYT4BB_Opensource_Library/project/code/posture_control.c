@@ -8,6 +8,10 @@
 
 #include "posture_control.h"
 #include "zf_common_headfile.h"
+#include "IMU.h"
+#include "motor_control.h"
+#include "pid.h"
+#include "steer_control.h"
 
 int time=0;
 

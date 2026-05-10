@@ -43,6 +43,25 @@
 
 #include "zf_common_headfile.h"
 
+#define CAMERA_MOUNT_HEIGHT_CM       (35.0f)
+#define CAMERA_PITCH_DEG             (45.0f)
+#define CAMERA_HFOV_DEG              (60.0f)
+#define CAMERA_VFOV_DEG              (45.0f)
+
+#define BRIDGE_CAL_NEAR_ROW          BRIDGE_DISTANCE_NEAR_ROW
+#define BRIDGE_CAL_MID_ROW           BRIDGE_DISTANCE_MID_ROW
+#define BRIDGE_CAL_FAR_ROW           BRIDGE_DISTANCE_FAR_ROW
+#define BRIDGE_CAL_NEAR_CM           (21.5f)
+#define BRIDGE_CAL_MID_CM            (26.6f)
+#define BRIDGE_CAL_FAR_CM            (32.5f)
+
+#define STAIRS_CAL_NEAR_ROW          STAIRS_DISTANCE_NEAR_ROW
+#define STAIRS_CAL_MID_ROW           STAIRS_DISTANCE_MID_ROW
+#define STAIRS_CAL_FAR_ROW           STAIRS_DISTANCE_FAR_ROW
+#define STAIRS_CAL_NEAR_CM           (20.5f)
+#define STAIRS_CAL_MID_CM            (25.1f)
+#define STAIRS_CAL_FAR_CM            (30.4f)
+
 //====================================================摄像头服务模块配置====================================================
 // 本模块仅负责图像采集与赛道提取，不涉及其他业务逻辑（严禁出现任何GPS相关代码）
 // 算法版本：V2.0 智能车竞赛级
@@ -116,13 +135,21 @@ typedef struct
     uint8   bridge_detected;                     // 是否检测到单边桥/窄通道
     uint8   bridge_hold_frames;                  // 单边桥保持计数
     int16   bridge_center_offset;                // 单边桥中心偏移
+    float   bridge_offset_angle_deg;             // 单边桥中心偏移角（右偏为正）
+    uint8   bridge_row_est;                      // 单边桥参考行号
     uint16  bridge_distance_est;                 // 单边桥相对距离估计（值越小表示越近）
+    float   bridge_geom_distance_cm;             // 单边桥几何距离估计（厘米）
+    float   bridge_forward_distance_cm;          // 单边桥标定后前向距离（厘米）
     uint8   bridge_distance_level;               // 单边桥接近等级（0远-3近）
     uint8   bridge_alignment_ok;                 // 单边桥是否已基本对准
     uint8   stairs_detected;                     // 是否检测到台阶/坡道结构
     uint8   stairs_hold_frames;                  // 台阶保持计数
     int16   stairs_center_offset;                // 台阶中心偏移
+    float   stairs_offset_angle_deg;             // 台阶中心偏移角（右偏为正）
+    uint8   stairs_row_est;                      // 台阶参考行号
     uint16  stairs_distance_est;                 // 台阶相对距离估计（值越小表示越近）
+    float   stairs_geom_distance_cm;             // 台阶几何距离估计（厘米）
+    float   stairs_forward_distance_cm;          // 台阶标定后前向距离（厘米）
     uint8   stairs_distance_level;               // 台阶接近等级（0远-3近）
     uint8   stairs_alignment_ok;                 // 台阶是否已基本对准
 } camera_task_info_struct;
